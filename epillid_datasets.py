@@ -84,7 +84,10 @@ class EPillIDSingleTypeDataset(Dataset):
         if self.transforms != None:
             img = self.transforms(img)
 
-        return img
+        return {
+            'image': img,
+            'label_id': entry['label_id']
+        }
 
     def _plot_first_images(self):
         plt.figure(figsize=(20, 20))
@@ -122,7 +125,11 @@ class EPillIDSupervisedContrastiveDataset(Dataset):
             consumer = transformed['consumer']
             reference = transformed['reference']
 
-        return (consumer, reference)
+        return {
+            'positive_1': consumer,
+            'positive_2': reference,
+            'label_id': consumer['label_id'],
+        }
 
     def _plot_first_images(self):
         plt.figure(figsize=(20, 20))

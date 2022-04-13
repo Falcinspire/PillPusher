@@ -30,7 +30,7 @@ class Model(LightningModule):
         return [optimizer], [scheduler]
 
     def info_nce_loss(self, batch):
-        imgs1, imgs2 = batch[0] #TODO refactor to remove [0]
+        imgs1, imgs2 = batch['positive_1'], batch['positive_2'] #TODO refactor to remove [0]
         imgs = torch.cat([imgs1, imgs2], dim=0)
 
         features = self.feature_extractor(imgs)
@@ -69,7 +69,10 @@ class Model(LightningModule):
         return self.info_nce_loss(batch)
 
     def predict_step(self, batch, batch_idx):
-        return self.feature_extractor(batch)
+        imgs = batch['image']
+        return_value = batch.copy()
+        return_value['image'] = self.feature_extractor(imgs)
+        return return_value
 
 from dotenv import load_dotenv
 from c3pi_dtd_mix_selfsupervised_dataset import C3PIDTDMixSelfSupervisedContrastiveDataset

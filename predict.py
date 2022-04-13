@@ -35,7 +35,8 @@ if __name__ == '__main__':
             ),
         ],
     )
-    consumer_output = torch.vstack(consumer_batch_output)
+    consumer_output = torch.vstack([batch['image'] for batch in consumer_batch_output])
+    consumer_output_lbs = [batch['label_id'] for batch in consumer_batch_output for _ in batch]
 
     reference_batch_output = trainer.predict(
         model, 
@@ -47,7 +48,8 @@ if __name__ == '__main__':
             ),
         ],
     )
-    reference_output = torch.vstack(reference_batch_output)
+    reference_output = torch.vstack([batch['image'] for batch in reference_batch_output])
+    reference_output_lbs = [batch['label_id'] for batch in reference_batch_output for _ in batch]
 
     pos_mask = torch.zeros((consumer_output.shape[0], reference_output.shape[0]), dtype=torch.bool)
     for i in range(consumer_output.shape[0]):

@@ -55,7 +55,13 @@ class C3PIDTDMixSelfSupervisedContrastiveDataset(Dataset):
         first = self.transforms({ 'pill_image': pill, 'texture_image': texture_1 })
         second = self.transforms({ 'pill_image': pill, 'texture_image': texture_2 })
 
-        return (first, second)
+        return {
+            'positive_1': first,
+            'positive_2': second,
+            'pill_path': pill_path,
+            'texture_1_path': texture_1_path,
+            'texture_2_path': texture_2_path,
+        }
 
     def _plot_random_pills(self):
         plt.figure()
