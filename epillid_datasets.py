@@ -86,7 +86,8 @@ class EPillIDSingleTypeDataset(Dataset):
 
         return {
             'image': img,
-            'label_id': entry['label_id']
+            'label_id': entry['label_id'],
+            'image_path': entry['image_path'],
         }
 
     def _plot_first_images(self):
@@ -127,8 +128,10 @@ class EPillIDSupervisedContrastiveDataset(Dataset):
 
         return {
             'positive_1': consumer,
+            'positive_1_path': consumer_entry['image_path'],
             'positive_2': reference,
-            'label_id': consumer['label_id'],
+            'positive_2_path': reference_entry['image_path'],
+            'label_id': consumer_entry['label_id'],
         }
 
     def _plot_first_images(self):

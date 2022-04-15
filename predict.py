@@ -1,16 +1,29 @@
 from dotenv import load_dotenv
 from c3pi_dtd_mix_selfsupervised_dataset import C3PIDTDMixSelfSupervisedContrastiveDataset
 from torchvision.transforms import RandomRotation, Resize, InterpolationMode, Compose, ColorJitter, ToTensor
-from epillid_datasets import EPillIDSingleTypeDataset, get_label_encoder
+from epillid_datasets import EPillIDCollection, EPillIDSingleTypeDataset, get_label_encoder
 from torch.utils.data import DataLoader
 from model import Model
 from pytorch_lightning import LightningModule, Trainer
 import torch.nn.functional as F
 import numpy as np
 import torch
+from PIL import Image
+from os import path
 import os
 
 from transforms import ToTensorD
+
+#refs https://holypython.com/python-pil-tutorial/creating-photo-collages/#:~:text=An%20image%20collage%20can%20easily,to%20the%20grid%20through%20iteration.
+def create_pill_collage(argsorted_matrix, consumer_output_imgs, reference_output_imgs, root_img_dir, patch_size=64):
+    canvas = Image.new("RGB", ((argsorted_matrix.shape[1]+1)*patch_size, argsorted_matrix.shape[0]*patch_size))
+    for consumer_idx, consumer_img_path in enumerate(consumer_output_imgs):
+        consumer_img = Image.open(path.join(root_img_dir, consumer_img_path)).resize((patch_size, patch_size))
+        canvas.paste(consumer_img, (0, patch_size*consumer_idx))
+        for reference_idx, reference_img_ipath in enumerate(argsorted_matrix[consumer_idx]):
+            reference_img = Image.open(path.join(root_img_dir, reference_output_imgs[reference_img_ipath])).resize((patch_size, patch_size))
+            canvas.paste(reference_img, (patch_size*(reference_idx+1), patch_size*consumer_idx))
+    canvas.show()
 
 if __name__ == '__main__':
     load_dotenv()
@@ -36,7 +49,8 @@ if __name__ == '__main__':
         ],
     )
     consumer_output = torch.vstack([batch['image'] for batch in consumer_batch_output])
-    consumer_output_lbs = [batch['label_id'] for batch in consumer_batch_output for _ in batch]
+    consumer_output_imgs = [item for batch in consumer_batch_output for item in batch['image_path']]
+    consumer_output_lbs = torch.cat([batch['label_id'] for batch in consumer_batch_output])
 
     reference_batch_output = trainer.predict(
         model, 
@@ -49,17 +63,24 @@ if __name__ == '__main__':
         ],
     )
     reference_output = torch.vstack([batch['image'] for batch in reference_batch_output])
-    reference_output_lbs = [batch['label_id'] for batch in reference_batch_output for _ in batch]
+    reference_output_imgs = [item for batch in reference_batch_output for item in batch['image_path']]
+    reference_output_lbs = torch.cat([batch['label_id'] for batch in reference_batch_output])
+    reference_output_real_labels = label_encoder.inverse_transform(reference_output_lbs.numpy())
 
     pos_mask = torch.zeros((consumer_output.shape[0], reference_output.shape[0]), dtype=torch.bool)
-    for i in range(consumer_output.shape[0]):
-        pos_mask[i, 0] = True #TODO get label_id
+    for idx, label in enumerate(consumer_output_lbs):
+        pos_mask[idx, label] = True
 
     # Similarity comparison
     cos_sim = F.cosine_similarity(consumer_output[:, None], reference_output[: None], dim=-1)
+
+    sorted_sim = torch.argsort(cos_sim, dim=1)
+
+    create_pill_collage(sorted_sim, consumer_output_imgs, reference_output_imgs, f'{os.getenv("EPILLID_DATASET_ROOT")}/classification_data')
+
     # Move the positive samples to the front of the array for convenience
     comb_sim = torch.cat(
-        [cos_sim[pos_mask][:, None], cos_sim.masked_fill(pos_mask, -9e15)],  # Correct reference image
+        [cos_sim[pos_mask][:, None], cos_sim],  # Correct reference image
         dim=-1,
     )
 
