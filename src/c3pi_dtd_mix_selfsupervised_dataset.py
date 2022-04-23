@@ -7,23 +7,29 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import scipy.io
 from torch.utils.data import Dataset
-from torchvision.transforms import RandomRotation, Resize, InterpolationMode, Compose, ColorJitter, ToTensor
+from torchvision.transforms import RandomRotation, Resize, InterpolationMode, Compose, ColorJitter, RandomAffine, RandomPerspective, RandomHorizontalFlip, ToTensor, ToPILImage
 from torchvision.transforms.functional import resize
-from transforms import ResizeD, RandomRotateD, RandomResizeD, ColorJitterMaskedD, RandomOverlayD
+from image_grid import ImageGrid
+from transforms import ResizeD, RandomRotateD, RandomResizeD, ColorJitterMaskedD, RandomOverlayD, TransformD
 import numpy as np
 from dotenv import load_dotenv
 
 class C3PIDTDMixSelfSupervisedContrastiveDataset(Dataset):
-    def __init__(self, dtd_root, c3pi_reference_root, transforms=None, seed=2784958):
+    def __init__(self, dtd_root, c3pi_reference_root, transforms=None):
         self.dtd_root = dtd_root
         self.c3pi_reference_root = c3pi_reference_root
         self.transforms = \
             transforms if transforms != None \
             else Compose([
                 ResizeD((224, 224), keys=['texture_image']),
+                RandomResizeD(size_range_longer_edge=(512, 512), keys=['pill_image']), # reduce size for performance reasons
                 RandomRotateD(180, expand=True, keys=['pill_image']),
-                RandomResizeD(size_range_longer_edge=(100, 224), keys=['pill_image']),
-                ColorJitterMaskedD(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1, keys=['pill_image']),
+                TransformD(transform=RandomHorizontalFlip(), keys=['pill_image']),
+                TransformD(transform=RandomPerspective(
+                    distortion_scale=0.6
+                ), keys=['pill_image']),
+                ColorJitterMaskedD(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.2, keys=['pill_image']),
+                RandomResizeD(size_range_longer_edge=(200, 224), keys=['pill_image']),
                 RandomOverlayD(key_foreground='pill_image', key_background='texture_image'),
                 ToTensor(),
             ])
@@ -34,9 +40,23 @@ class C3PIDTDMixSelfSupervisedContrastiveDataset(Dataset):
         self.dtd_data = [path.join('images', dtd_image_local[0]) for dtd_image_local in dtd_images]
         random.shuffle(self.dtd_data)
 
-        reference_data_df = pd.read_csv(path.join(c3pi_reference_root, 'index.csv'))
-        reference_data_grouped_df = reference_data_df.groupby('NDC11')
-        self.c3pi_reference_data = [group['Local_Path'].tolist()[0] for _, group in reference_data_grouped_df]
+        # No longer care about grouping by front/back
+        # reference_data_df = pd.read_csv(path.join(c3pi_reference_root, 'index.csv'))
+        # reference_data_grouped_df = reference_data_df.groupby('NDC11')
+        # _c3pi_reference_data = [group['Local_Path'].tolist() for _, group in reference_data_grouped_df]
+        # print(len(_c3pi_reference_data))
+        # random.shuffle(self.c3pi_reference_data)
+        # freq = {}
+        # for list in _c3pi_reference_data:
+        #     if (len(list)) == 32: print(list)
+        #     if len(list) not in freq:
+        #         freq[len(list)] = 1
+        #     else:
+        #         freq[len(list)] += 1
+        # print(freq)
+
+        self.c3pi_reference_data_index = pd.read_csv(path.join(c3pi_reference_root, 'index.csv'))
+        self.c3pi_reference_data = self.c3pi_reference_data_index['Local_Path'].tolist()
         random.shuffle(self.c3pi_reference_data)
 
     def __len__(self):
@@ -63,6 +83,9 @@ class C3PIDTDMixSelfSupervisedContrastiveDataset(Dataset):
             'texture_2_path': texture_2_path,
         }
 
+    def get_unique_ndc11s(self):
+        return set([f'{value:011d}' for value in self.c3pi_reference_data_index['NDC11'].tolist()])
+
     def _plot_random_pills(self):
         plt.figure()
         for idx, entry in enumerate(random.sample(self.c3pi_reference_data, 8)):
@@ -77,20 +100,16 @@ class C3PIDTDMixSelfSupervisedContrastiveDataset(Dataset):
             plt.imshow(Image.open(path.join(self.dtd_root, entry)))
         plt.show()
 
-    def _plot_first_images(self):
-        plt.figure(figsize=(20, 20))
-        plt.subplots_adjust(wspace=0, hspace=0)
-        rows = 6
-        for idx, (first, second) in enumerate([self[idx] for idx in range(rows)]):
-            plt.subplot(rows, 2, idx*2+1)
-            plt.xticks([])
-            plt.yticks([])
-            plt.imshow(first.permute(1, 2, 0))
-            plt.subplot(rows, 2, idx*2+2)
-            plt.xticks([])
-            plt.yticks([])
-            plt.imshow(second.permute(1, 2, 0))
-        plt.show()
+    def _plot_first_images(self, square_count=16):
+        iterator = iter(self)
+        image_grid = ImageGrid(square_count, square_count, 224)
+        toPILTransform = ToPILImage()
+        for i in range(square_count):
+            for j in range(square_count//2):
+                output = next(iterator)
+                image_grid.draw(i, j*2, toPILTransform(output['positive_1']))
+                image_grid.draw(i, j*2+1, toPILTransform(output['positive_2']))
+        image_grid.show()
 
 if __name__ == '__main__':
     load_dotenv()

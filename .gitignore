@@ -1,4 +1,9 @@
-/lightning_logs
+src/lightning_logs*
+src/outputs*
+
+label_encoder.pickle
+
+.vscode
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

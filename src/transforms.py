@@ -48,6 +48,15 @@ class RandomRotateD:
             data[key] = self.transform(data[key])
         return data
 
+class TransformD:
+    def __init__(self, keys, transform):
+        self.keys = keys
+        self.transform = transform
+    def __call__(self, data):
+        for key in self.keys:
+            data[key] = self.transform(data[key])
+        return data
+
 class ColorJitterMaskedD:
     def __init__(self, brightness=0, contrast=0, saturation=0, hue=0, keys=[]):
         self.transform = ColorJitter(brightness, contrast, saturation, hue)
