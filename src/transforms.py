@@ -31,8 +31,8 @@ class RandomResizeD:
         self.keys = keys
     
     def __call__(self, data):
-        max_size = int(self.size_range_longer_edge[0] + random.random() * (self.size_range_longer_edge[1] - self.size_range_longer_edge[0]))
         for key in self.keys:
+            max_size = int(self.size_range_longer_edge[0] + random.random() * (self.size_range_longer_edge[1] - self.size_range_longer_edge[0]))
             ratio = max_size / max(data[key].size)
             size = (int(data[key].size[1] * ratio), int(data[key].size[0] * ratio))
             data[key] = resize(data[key], size, interpolation=self.interpolation, antialias=self.antialias)

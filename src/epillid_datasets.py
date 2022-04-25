@@ -49,13 +49,13 @@ class EPillIDCollection():
 
         folds_root = path.join(epillid_root, 'folds/pilltypeid_nih_sidelbls0.01_metric_5folds/base/')
 
-        if fold:
-            if validation != None:
+        if fold != None:
+            if validation:
                 self.df = pd.read_csv(path.join(folds_root, f'pilltypeid_nih_sidelbls0.01_metric_5folds_{fold}.csv'))
             else:
                 self.df = pd.concat([pd.read_csv(path.join(folds_root, f'pilltypeid_nih_sidelbls0.01_metric_5folds_{i}.csv')) for i in range(5) if i != fold])
         else:
-            self.df = pd.read_csv(path.join(folds_root, f'pilltypeid_nih_sidelbls0.01_metric_5folds_all.csv'))
+            self.df = pd.read_csv(path.join(folds_root, 'pilltypeid_nih_sidelbls0.01_metric_5folds_all.csv'))
 
         if filter != None:
             self.df = self.df[self.df['is_ref'] == (filter == 'reference')]
@@ -147,14 +147,14 @@ class EPillIDSingleTypeDataset(Dataset):
         plt.show()
 
 class EPillIDSupervisedContrastiveDataset(Dataset):
-    def __init__(self, epillid_root, label_encoder, fold=0, transforms=None):
-        assert fold in range(5)
+    def __init__(self, epillid_root, label_encoder, fold=None, validation=False, transforms=None):
+        assert fold == None or fold in range(5)
 
         self.epillid_root = epillid_root
         self.transforms = \
             transforms if transforms != None \
             else Compose([
-                RandomResizeD((220, 224), keys=['positive_1', 'positive_2']),
+                RandomResizeD(size_range_longer_edge=(512, 512), keys=['positive_1', 'positive_2']), # reduce size for performance reasons
                 RandomRotateD(180, expand=False, keys=['positive_1', 'positive_2']),
                 TransformD(transform=RandomHorizontalFlip(), keys=['positive_1', 'positive_2']),
                 TransformD(transform=RandomPerspective(
@@ -163,6 +163,7 @@ class EPillIDSupervisedContrastiveDataset(Dataset):
                 TransformD(transform=ColorJitter(
                     brightness=0.3, contrast=0.3, saturation=0.3, hue=0.2,
                 ), keys=['positive_1', 'positive_2']),
+                RandomResizeD(size_range_longer_edge=(220, 224), keys=['positive_1', 'positive_2']),
                 TransformD(transform=ToTensor(), keys=['positive_1', 'positive_2']),
             ])
 
@@ -170,7 +171,7 @@ class EPillIDSupervisedContrastiveDataset(Dataset):
             epillid_root,
             label_encoder,
             fold=fold,
-            validation=False,
+            validation=validation,
             inject_references=True,
         )
 
@@ -223,7 +224,7 @@ if __name__ == '__main__':
     # ds = EPillIDSingleTypeDataset(root_dir, get_label_encoder(root_dir), use_reference_set=False, transforms=ToTensor())
     # ds = EPillIDSingleTypeDataset(root_dir, get_label_encoder(root_dir), use_reference_set=True, transforms=ToTensor())
 
-    # ds._plot_first_images()
+    ds._plot_first_images()
 
-    for entry in ds:
-        pass
+    # for entry in ds:
+    #     pass
