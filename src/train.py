@@ -6,6 +6,7 @@ from epillid_datasets import EPillIDCollection, EPillIDSingleTypeDataset, EPillI
 from torch.utils.data import DataLoader
 from model import Model
 from pytorch_lightning import Trainer
+from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning.callbacks import ModelCheckpoint
 import torch
 import numpy as np
@@ -74,7 +75,7 @@ if __name__ == '__main__':
             label_encoder, 
             fold=model.hparams.fold, 
             validation=False,
-        ),
+        )
     
     dataloader = DataLoader(
         dataset, 
@@ -90,11 +91,15 @@ if __name__ == '__main__':
         dirpath=model.hparams.checkpoint_path,
         filename=model.hparams.checkpoint_name,
     )
+    tb_logger = pl_loggers.TensorBoardLogger(
+        save_dir=f'{model.hparams.checkpoint_name}-logs/'
+    )
     trainer = Trainer(
         gpus=args.gpus,
         max_epochs=model.hparams.max_epochs,
         callbacks=[checkpoint],
         limit_val_batches=1 if model.hparams.pretraining else 1.0,
+        logger=tb_logger,
     )
     trainer.fit(
         model, 
