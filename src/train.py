@@ -63,39 +63,21 @@ if __name__ == '__main__':
     
     label_encoder = load_label_encoder(os.getenv('EPILLID_LABEL_ENCODER'))
 
-    datasets = \
-        (
-            C3PIDTDMixSelfSupervisedContrastiveDataset(
-                os.getenv('DTD_DATASET_ROOT'), 
-                os.getenv('C3PI_REFERENCE_PILLS')
-            ), 
-            C3PIDTDMixSelfSupervisedContrastiveDataset(
-                os.getenv('DTD_DATASET_ROOT'), 
-                os.getenv('C3PI_REFERENCE_PILLS')
-            ),
+    dataset = \
+        C3PIDTDMixSelfSupervisedContrastiveDataset(
+            os.getenv('DTD_DATASET_ROOT'), 
+            os.getenv('C3PI_REFERENCE_PILLS')
         ) \
         if model.hparams.pretraining else \
-        (
-            EPillIDSupervisedContrastiveDataset(
-                os.getenv('EPILLID_DATASET_ROOT'), 
-                label_encoder, 
-                fold=model.hparams.fold, 
-                validation=False,
-            ),
-            EPillIDSupervisedContrastiveDataset(
-                os.getenv('EPILLID_DATASET_ROOT'), 
-                label_encoder, 
-                fold=model.hparams.fold, 
-                validation=True,
-            ),
-        )
-    train_dataloader = DataLoader(
-        datasets[0], 
-        batch_size=model.hparams.batch_size,
-        num_workers=args.dataloader_num_workers,
-    )
-    val_dataloader = DataLoader(
-        datasets[1], 
+        EPillIDSupervisedContrastiveDataset(
+            os.getenv('EPILLID_DATASET_ROOT'), 
+            label_encoder, 
+            fold=model.hparams.fold, 
+            validation=False,
+        ),
+    
+    dataloader = DataLoader(
+        dataset, 
         batch_size=model.hparams.batch_size,
         num_workers=args.dataloader_num_workers,
     )
@@ -116,7 +98,7 @@ if __name__ == '__main__':
     )
     trainer.fit(
         model, 
-        train_dataloaders=[train_dataloader],
-        val_dataloaders=[val_dataloader],
+        train_dataloaders=[dataloader],
+        val_dataloaders=[dataloader],
         ckpt_path=args.resume_from_checkpoint,
     )
