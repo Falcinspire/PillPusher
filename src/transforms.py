@@ -1,6 +1,10 @@
 import random
 from torchvision.transforms import RandomRotation, Resize, InterpolationMode, ColorJitter, ToTensor
 from torchvision.transforms.functional import resize
+from torchvision.transforms.functional import pad
+from torchvision import transforms
+import numpy as np
+import numbers
 
 class RandomOverlayD:
     def __init__(self, key_foreground, key_background):
@@ -79,3 +83,42 @@ class ToTensorD:
         for key in self.keys:
             data[key] = self.transform(data[key])
         return data
+
+# ====================================================
+# slightly modified https://discuss.pytorch.org/t/how-to-resize-and-pad-in-a-torchvision-transforms-compose/71850/3
+
+def get_padding(image, size):    
+    w, h = image.size
+    max_w, max_h = size
+    h_padding = (max_w - w) / 2
+    v_padding = (max_h - h) / 2
+    l_pad = h_padding if h_padding % 1 == 0 else h_padding+0.5
+    t_pad = v_padding if v_padding % 1 == 0 else v_padding+0.5
+    r_pad = h_padding if h_padding % 1 == 0 else h_padding-0.5
+    b_pad = v_padding if v_padding % 1 == 0 else v_padding-0.5
+    padding = (int(l_pad), int(t_pad), int(r_pad), int(b_pad))
+    return padding
+
+class NewPad(object):
+    def __init__(self, size, fill=0, padding_mode='constant'):
+        assert isinstance(fill, (numbers.Number, str, tuple))
+        assert padding_mode in ['constant', 'edge', 'reflect', 'symmetric']
+
+        self.size = size
+        self.fill = fill
+        self.padding_mode = padding_mode
+        
+    def __call__(self, img):
+        """
+        Args:
+            img (PIL Image): Image to be padded.
+
+        Returns:
+            PIL Image: Padded image.
+        """
+        return pad(img, get_padding(img, self.size), self.fill, self.padding_mode)
+    
+    def __repr__(self):
+        return self.__class__.__name__ + '(padding={0}, fill={1}, padding_mode={2})'.\
+            format(self.fill, self.padding_mode)
+# ====================================================

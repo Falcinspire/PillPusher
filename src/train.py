@@ -36,13 +36,12 @@ if __name__ == '__main__':
     parser.add_argument('--gpus', type=int, default=1)
     parser.add_argument('--batch-size', type=int, default=256)
     parser.add_argument('--epochs', type=int, default=100)
-    parser.add_argument('--dataloader-num-workers', type=int, default=0)
+    parser.add_argument('--dataloader-num-workers', type=int, default=1)
     parser.add_argument('--pretraining', default=False, action='store_true')
     parser.add_argument('--fold', type=int, default=0)
-    parser.add_argument('--label-encoder')
     parser.add_argument('--resume-from-checkpoint')
-    parser.add_argument('--checkpoint-path', required=True)
-    parser.add_argument('--checkpoint-name', required=True)
+    parser.add_argument('--checkpoint-path')
+    parser.add_argument('--checkpoint-name')
     args = parser.parse_args()
 
     # Load the model early in order to grab hyperparameters. This is probably not the most efficient
@@ -57,10 +56,12 @@ if __name__ == '__main__':
             pretraining=args.pretraining, 
             fold=args.fold, 
             batch_size=args.batch_size, 
-            max_epochs=args.epochs
+            max_epochs=args.epochs,
+            checkpoint_path=args.checkpoint_path,
+            checkpoint_name=args.checkpoint_name,
         )
     
-    label_encoder = load_label_encoder(args.label_encoder) if args.label_encoder != None else None
+    label_encoder = load_label_encoder(os.getenv('EPILLID_LABEL_ENCODER'))
 
     datasets = \
         (
@@ -79,15 +80,13 @@ if __name__ == '__main__':
                 os.getenv('EPILLID_DATASET_ROOT'), 
                 label_encoder, 
                 fold=model.hparams.fold, 
-                use_validation=False,
-                transforms=ToTensorD(keys=['consumer', 'reference']),
+                validation=False,
             ),
             EPillIDSupervisedContrastiveDataset(
                 os.getenv('EPILLID_DATASET_ROOT'), 
                 label_encoder, 
                 fold=model.hparams.fold, 
-                use_validation=True,
-                transforms=ToTensorD(keys=['consumer', 'reference']),
+                validation=True,
             ),
         )
     train_dataloader = DataLoader(
@@ -106,14 +105,14 @@ if __name__ == '__main__':
         mode="min", 
         save_top_k=1, 
         save_last=True,
-        dirpath=args.checkpoint_path,
-        filename=args.checkpoint_name,
+        dirpath=model.hparams.checkpoint_path,
+        filename=model.hparams.checkpoint_name,
     )
     trainer = Trainer(
         gpus=args.gpus,
         max_epochs=model.hparams.max_epochs,
         callbacks=[checkpoint],
-        limit_val_batches=1 if args.pretraining else 1.0,
+        limit_val_batches=1 if model.hparams.pretraining else 1.0,
     )
     trainer.fit(
         model, 

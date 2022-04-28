@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 from image_grid import ImageGrid
 
 class Model(LightningModule):
-    def __init__(self, hidden_dim, lr, temperature, weight_decay, pretraining=False, fold=0, batch_size=256, max_epochs=100):
+    def __init__(self, hidden_dim, lr, temperature, weight_decay, pretraining=False, fold=0, batch_size=256, max_epochs=100, checkpoint_path='checkpoints/default', checkpoint_name='default'):
         super().__init__()
         self.save_hyperparameters()
         assert self.hparams.temperature > 0.0, "The temperature must be a positive float"
@@ -111,27 +111,3 @@ class Model(LightningModule):
         return_value = batch.copy()
         return_value['image'] = self.feature_extractor(imgs)
         return return_value
-
-from dotenv import load_dotenv
-from c3pi_dtd_mix_selfsupervised_dataset import C3PIDTDMixSelfSupervisedContrastiveDataset
-from torch.utils.data import DataLoader
-import os
-
-if __name__ == '__main__':
-    load_dotenv()
-
-    #TODO unwrap pretraining set
-    ds = C3PIDTDMixSelfSupervisedContrastiveDataset(os.getenv('DTD_DATASET_ROOT'), os.getenv('C3PI_REFERENCE_PILLS'))
-    dl = DataLoader(ds, batch_size=32)
-    dl_validation = DataLoader(ds, batch_size=32)
-    model = Model(hidden_dim=128, lr=5e-4, temperature=0.07, weight_decay=1e-4)
-    trainer = Trainer(
-        gpus=1,
-        max_epochs=model.hparams.max_epochs
-    )
-    trainer.fit(
-        model, 
-        train_dataloaders=[dl], 
-        validation_dataloaders=[dl_validation],
-        limit_val_batches=1,
-    )

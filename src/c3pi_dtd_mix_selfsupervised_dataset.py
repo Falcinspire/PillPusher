@@ -21,9 +21,9 @@ class C3PIDTDMixSelfSupervisedContrastiveDataset(Dataset):
         self.transforms = \
             transforms if transforms != None \
             else Compose([
-                ResizeD((224, 224), keys=['texture_image']),
+                TransformD(transform=Resize((224, 224)), keys=['texture_image']),
                 RandomResizeD(size_range_longer_edge=(512, 512), keys=['pill_image']), # reduce size for performance reasons
-                RandomRotateD(180, expand=True, keys=['pill_image']),
+                TransformD(transform=RandomRotation(180, expand=True), keys=['pill_image']),
                 TransformD(transform=RandomHorizontalFlip(), keys=['pill_image']),
                 TransformD(transform=RandomPerspective(
                     distortion_scale=0.6
@@ -63,7 +63,6 @@ class C3PIDTDMixSelfSupervisedContrastiveDataset(Dataset):
         return len(self.c3pi_reference_data)
 
     def __getitem__(self, idx):
-        #TODO  See if transforms can be integrated into here
         pill_path = self.c3pi_reference_data[idx]
         texture_1_path = self.dtd_data[(2*idx) % len(self.dtd_data)]
         texture_2_path = self.dtd_data[(2*idx+1) % len(self.dtd_data)]

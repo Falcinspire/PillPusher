@@ -7,7 +7,7 @@ from torch.utils.data import Dataset
 from torchvision.transforms import RandomRotation, Resize, InterpolationMode, Compose, ColorJitter, ToTensor, ToPILImage, RandomPerspective, RandomHorizontalFlip
 from torchvision.transforms.functional import resize
 from image_grid import ImageGrid
-from transforms import ResizeD, RandomRotateD, RandomResizeD, ColorJitterMaskedD, RandomOverlayD, ToTensorD, TransformD
+from transforms import NewPad, ResizeD, RandomRotateD, RandomResizeD, ColorJitterMaskedD, RandomOverlayD, ToTensorD, TransformD
 from sklearn.preprocessing import LabelEncoder
 import pickle
 import numpy as np
@@ -154,8 +154,8 @@ class EPillIDSupervisedContrastiveDataset(Dataset):
         self.transforms = \
             transforms if transforms != None \
             else Compose([
-                RandomResizeD(size_range_longer_edge=(512, 512), keys=['positive_1', 'positive_2']), # reduce size for performance reasons
-                RandomRotateD(180, expand=False, keys=['positive_1', 'positive_2']),
+                TransformD(transform=Resize((512, 512)), keys=['positive_1', 'positive_2']), # reduce size for performance reasons
+                TransformD(transform=RandomRotation(180, expand=True), keys=['positive_1', 'positive_2']),
                 TransformD(transform=RandomHorizontalFlip(), keys=['positive_1', 'positive_2']),
                 TransformD(transform=RandomPerspective(
                     distortion_scale=0.6,
@@ -164,6 +164,7 @@ class EPillIDSupervisedContrastiveDataset(Dataset):
                     brightness=0.3, contrast=0.3, saturation=0.3, hue=0.2,
                 ), keys=['positive_1', 'positive_2']),
                 RandomResizeD(size_range_longer_edge=(220, 224), keys=['positive_1', 'positive_2']),
+                TransformD(transform=NewPad((224, 224)), keys=['positive_1', 'positive_2']),
                 TransformD(transform=ToTensor(), keys=['positive_1', 'positive_2']),
             ])
 
@@ -219,7 +220,7 @@ if __name__ == '__main__':
     load_dotenv()
 
     root_dir = os.getenv('EPILLID_DATASET_ROOT')
-    ds = EPillIDSupervisedContrastiveDataset(root_dir, get_label_encoder(root_dir))
+    ds = EPillIDSupervisedContrastiveDataset(root_dir, load_label_encoder(os.getenv('EPILLID_LABEL_ENCODER')), fold=1, validation=True)
     # ds = EPillIDSingleTypeDataset(root_dir, get_label_encoder(root_dir), fold=0, use_reference=False)
     # ds = EPillIDSingleTypeDataset(root_dir, get_label_encoder(root_dir), use_reference_set=False, transforms=ToTensor())
     # ds = EPillIDSingleTypeDataset(root_dir, get_label_encoder(root_dir), use_reference_set=True, transforms=ToTensor())
