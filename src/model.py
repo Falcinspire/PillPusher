@@ -48,9 +48,9 @@ class Model(LightningModule):
         #TODO the conversion from tensor to PIL to np is not great
         if dump:
             raw_sorted = cos_sim.argsort(dim=-1, descending=True)
-            rows = min(32, imgs.shape[0])
-            base_cols = min(16, imgs.shape[0])
-            image_grid = ImageGrid(rows, base_cols+1, 128)
+            rows = min(16, imgs.shape[0])
+            base_cols = min(12, imgs.shape[0])
+            image_grid = ImageGrid(rows, base_cols+1, 64)
             for row, row_value in enumerate(raw_sorted[:rows]):
                 image_grid.draw(row, 0, ToPILImage()(imgs[row]))
                 for col, col_value in enumerate(row_value[:base_cols]):
