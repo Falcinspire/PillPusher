@@ -110,7 +110,7 @@ class EPillIDSingleTypeDataset(Dataset):
             epillid_root, 
             label_encoder,
             fold=fold,
-            validation=None,
+            validation=validation,
             filter='reference' if use_reference else 'consumer',
             sort_by_label_id=True,
         )

@@ -23,8 +23,6 @@ if __name__ == '__main__':
     parser.add_argument('--gpus', type=int, default=1)
     parser.add_argument('--batch-size', type=int, default=128)
     parser.add_argument('--dataloader-num-workers', type=int, default=1)
-    parser.add_argument('--fold', type=int, default=0)
-    parser.add_argument('--validation', action='store_true', default=False)
     parser.add_argument('--checkpoint', type=str, required=True)
     parser.add_argument('--output', type=str, required=True)
     args = parser.parse_args()
@@ -39,7 +37,7 @@ if __name__ == '__main__':
         model, 
         dataloaders=[
             DataLoader(
-                EPillIDSingleTypeDataset(os.getenv('EPILLID_DATASET_ROOT'), label_encoder, fold=args.fold, validation=args.validation, use_reference=False),
+                EPillIDSingleTypeDataset(os.getenv('EPILLID_DATASET_ROOT'), label_encoder, use_reference=False),
                 batch_size=args.batch_size,
                 num_workers=args.dataloader_num_workers,
                 shuffle=False,
@@ -49,8 +47,6 @@ if __name__ == '__main__':
     consumer_output = torch.vstack([batch['image'] for batch in consumer_batch_output])
     #refs https://stackoverflow.com/a/952952
     consumer_output_imgs = [item for batch in consumer_batch_output for item in batch['image_path']]
-    consumer_output_lbs = torch.cat([batch['label_id'] for batch in consumer_batch_output])
-    consumer_output_lbs_raw = [item for batch in consumer_batch_output for item in batch['label']]
 
     reference_batch_output = trainer.predict(
         model, 
@@ -65,19 +61,9 @@ if __name__ == '__main__':
     )
     reference_output = torch.vstack([batch['image'] for batch in reference_batch_output])
     reference_output_imgs = [item for batch in reference_batch_output for item in batch['image_path']]
-    reference_output_lbs = torch.cat([batch['label_id'] for batch in reference_batch_output])
-    reference_output_real_labels = label_encoder.inverse_transform(reference_output_lbs.numpy())
 
-    pos_mask = torch.zeros((consumer_output.shape[0], reference_output.shape[0]), dtype=torch.bool)
-    for idx, label in enumerate(consumer_output_lbs):
-        pos_mask[idx, label] = True
-
-    # Similarity comparison
-    cos_sim = F.cosine_similarity(consumer_output[:, None], reference_output[: None], dim=-1)
-
-    label_columns = list(range(len(label_encoder.classes_)))
-    df = pd.DataFrame(columns=['img_path', 'correct_label'] + label_columns)
-    df['img_path'] = consumer_output_imgs
-    df['correct_label'] = consumer_output_lbs
-    df[label_columns] = cos_sim.cpu().numpy()
+    label_columns = list(range(128))
+    df = pd.DataFrame(columns=['img_path'] + label_columns)
+    df['img_path'] = consumer_output_imgs + reference_output_imgs
+    df[label_columns] = np.concatenate([consumer_output.cpu().numpy(), reference_output.cpu().numpy()])
     df.to_csv(f'{args.output}.csv', index=False)

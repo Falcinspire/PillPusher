@@ -41,14 +41,21 @@ if __name__ == '__main__':
     parser.add_argument('--pretraining', default=False, action='store_true')
     parser.add_argument('--fold', type=int, default=0)
     parser.add_argument('--resume-from-checkpoint')
+    parser.add_argument('--pretrain-from-checkpoint')
     parser.add_argument('--checkpoint-path')
     parser.add_argument('--checkpoint-name')
     args = parser.parse_args()
 
+    load_model_checkpoint = None
+    if args.pretrain_from_checkpoint != None:
+        load_model_checkpoint = args.pretrain_from_checkpoint
+    elif args.resume_from_checkpoint != None:
+        load_model_checkpoint = args.resume_from_checkpoint
+
     # Load the model early in order to grab hyperparameters. This is probably not the most efficient
     # operation, but it is convenient
-    model = Model.load_from_checkpoint(args.resume_from_checkpoint) \
-        if args.resume_from_checkpoint else \
+    model = Model.load_from_checkpoint(load_model_checkpoint) \
+        if load_model_checkpoint != None else \
         Model(
             hidden_dim=128, 
             lr=5e-4, 
@@ -61,6 +68,19 @@ if __name__ == '__main__':
             checkpoint_path=args.checkpoint_path,
             checkpoint_name=args.checkpoint_name,
         )
+    
+    if args.pretrain_from_checkpoint != None:
+        # fill in custom hparams
+        model.hparams['hidden_dim']=128
+        model.hparams['lr']=5e-4
+        model.hparams['temperature']=0.07
+        model.hparams['weight_decay']=1e-4
+        model.hparams['pretraining']=args.pretraining
+        model.hparams['fold']=args.fold
+        model.hparams['batch_size']=args.batch_size
+        model.hparams['max_epochs']=args.epochs
+        model.hparams['checkpoint_path']=args.checkpoint_path
+        model.hparams['checkpoint_name']=args.checkpoint_name
     
     label_encoder = load_label_encoder(os.getenv('EPILLID_LABEL_ENCODER'))
 

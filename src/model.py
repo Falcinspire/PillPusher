@@ -33,6 +33,9 @@ class Model(LightningModule):
         scheduler = CosineAnnealingLR(optimizer, T_max=self.hparams.max_epochs, eta_min=self.hparams.lr / 50) #TODO Why / 50?
         return [optimizer], [scheduler]
 
+    def forward(self, batch):
+        return self.feature_extractor(batch)
+
     def info_nce_loss(self, batch, dump=False):
         imgs1, imgs2 = batch['positive_1'], batch['positive_2'] #TODO remove the [0]. Maybe use a collate_fn?
         imgs = torch.cat([imgs1, imgs2], dim=0)
@@ -71,7 +74,7 @@ class Model(LightningModule):
             [cos_sim[pos_mask][:, None], cos_sim.masked_fill(pos_mask, -9e15)],  # First position positive example
             dim=-1,
         )
-        # For each sample, find sorted index of it's positive 
+        # For each sample, find sorted index of its positive 
         sim_argsort = comb_sim.argsort(dim=-1, descending=True).argmin(dim=-1)
 
         # Logging ranking metrics. (== 0) means the positive pair was sorted together.

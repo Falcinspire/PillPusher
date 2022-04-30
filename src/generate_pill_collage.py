@@ -60,5 +60,5 @@ if __name__ == '__main__':
         f'{os.getenv("EPILLID_DATASET_ROOT")}/classification_data',
         rows=64,
         columns=64,
-        patch_size=64,
+        patch_size=128,
     )
