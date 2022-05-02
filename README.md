@@ -1,6 +1,6 @@
 # PillPusher
 
-# Installation
+## Installation
 
 1. There are a number of dependencies that must be installed. See the imports for each file for details.
 
