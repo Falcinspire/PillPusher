@@ -89,4 +89,4 @@ python train.py \
 `python embedding_space.py --mode activation --source embeddings.csv --activation-indices 11,12,13,14 --save-activation activation11121314.png`
 
 ## Implementation Notes
-I did not have time to finish refactoring this repository. There are many TODOs that still need to be addressed, and many functions that need refactoring and/or documentation.
+I did not have time to finish refactoring this repository. There are many TODOs that still need to be addressed, and many functions that need refactoring and/or documentation. On another note, the commands posted in this README were pulled from my terminal history and may be slightly out-of-date. Any errors should be easily correctable by inspecting the relevant source file.
